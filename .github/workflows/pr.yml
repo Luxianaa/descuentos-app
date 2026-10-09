@@ -41,8 +41,10 @@ jobs:
       - name: Desplegar el preview
         id: vercel
         run: |
-          url=$(npx --yes vercel@latest deploy --token "$VERCEL_TOKEN" \
-            --build-env VITE_API_URL="$API_URL" \
+          TOKEN=$(printf '%s' "$VERCEL_TOKEN" | tr -d '\r\n "')
+          API=$(printf '%s' "$API_URL" | tr -d '\r\n "' | sed 's:/*$::')
+          url=$(npx --yes vercel@latest deploy --token "$TOKEN" \
+            --build-env VITE_API_URL="$API" \
             --build-env VITE_COMMIT="$HEAD_SHA")
           echo "Preview: $url"
           echo "url=$url" >> "$GITHUB_OUTPUT"

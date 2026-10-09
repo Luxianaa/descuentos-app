@@ -67,8 +67,10 @@ jobs:
           node-version: 22
       - name: Desplegar a produccion
         run: |
-          npx --yes vercel@latest deploy --prod --token "$VERCEL_TOKEN" \
-            --build-env VITE_API_URL="$API_URL" \
+          TOKEN=$(printf '%s' "$VERCEL_TOKEN" | tr -d '\r\n "')
+          API=$(printf '%s' "$API_URL" | tr -d '\r\n "' | sed 's:/*$::')
+          npx --yes vercel@latest deploy --prod --token "$TOKEN" \
+            --build-env VITE_API_URL="$API" \
             --build-env VITE_COMMIT="$GITHUB_SHA"
 
   smoke-test:
