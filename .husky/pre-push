@@ -1,0 +1,2 @@
+echo "pre-push: ejecutando las pruebas antes de subir..."
+npm --prefix web test && mvn -B -q -f api/pom.xml test

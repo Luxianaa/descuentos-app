@@ -1,0 +1,60 @@
+# En cada pull request: CI completo y, si pasa, un despliegue de PREVIEW en Vercel con su propia URL.
+name: PR (CI y preview)
+
+on:
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: true # un push nuevo cancela el run anterior del mismo PR
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    uses: ./.github/workflows/ci.yml
+
+  preview:
+    name: Preview en Vercel
+    needs: ci
+    runs-on: ubuntu-latest
+    environment: preview
+    permissions:
+      contents: read
+      pull-requests: write
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      API_URL: ${{ vars.API_URL }}
+      GH_TOKEN: ${{ github.token }}
+      HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verificar secretos y variables
+        run: scripts/verificar-config.sh VERCEL_TOKEN VERCEL_ORG_ID VERCEL_PROJECT_ID API_URL
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Desplegar el preview
+        id: vercel
+        run: |
+          url=$(npx --yes vercel@latest deploy --token "$VERCEL_TOKEN" \
+            --build-env VITE_API_URL="$API_URL" \
+            --build-env VITE_COMMIT="$HEAD_SHA")
+          echo "Preview: $url"
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+      - name: Smoke test del preview
+        env:
+          SMOKE_API_COMMIT: 0 # la API del preview es la de produccion
+          PREVIEW_URL: ${{ steps.vercel.outputs.url }}
+        run: scripts/smoke.sh "$API_URL" "$PREVIEW_URL" "$HEAD_SHA"
+      - name: Comentar la URL en el pull request
+        env:
+          PREVIEW_URL: ${{ steps.vercel.outputs.url }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          gh pr comment "$PR_NUMBER" --edit-last --create-if-none \
+            --body "Preview del commit ${HEAD_SHA::7}: $PREVIEW_URL"

@@ -1,0 +1,82 @@
+# En cada push a main: CI completo y, solo si pasa, despliegue de la API (Render) y del front-end (Vercel).
+name: CD (CI y despliegue)
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: cd-main
+  cancel-in-progress: false # nunca se cancela un despliegue a medias
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    uses: ./.github/workflows/ci.yml
+
+  deploy-api:
+    name: Desplegar API en Render
+    needs: ci
+    runs-on: ubuntu-latest
+    environment: api-production
+    env:
+      RENDER_DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
+      API_URL: ${{ vars.API_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verificar secretos y variables
+        run: scripts/verificar-config.sh RENDER_DEPLOY_HOOK API_URL
+      - name: Pedir a Render que despliegue este commit
+        run: curl -fsS -X POST "${RENDER_DEPLOY_HOOK}&ref=${GITHUB_SHA}"
+      - name: Esperar a que la API corra este commit
+        run: |
+          for i in $(seq 1 90); do
+            commit=$(curl -fsS --max-time 20 "$API_URL/api/info" 2>/dev/null | jq -r .commit 2>/dev/null || true)
+            echo "intento $i: la API corre '${commit:-sin respuesta}'"
+            [ "$commit" = "$GITHUB_SHA" ] && exit 0
+            sleep 10
+          done
+          echo "::error title=Render::La API no corre el commit ${GITHUB_SHA::7} despues de 15 minutos"
+          exit 1
+
+  deploy-web:
+    name: Desplegar front-end en Vercel
+    needs: deploy-api
+    runs-on: ubuntu-latest
+    environment:
+      name: web-production
+      url: ${{ vars.WEB_URL }}
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      API_URL: ${{ vars.API_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verificar secretos y variables
+        run: scripts/verificar-config.sh VERCEL_TOKEN VERCEL_ORG_ID VERCEL_PROJECT_ID API_URL
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Desplegar a produccion
+        run: |
+          npx --yes vercel@latest deploy --prod --token "$VERCEL_TOKEN" \
+            --build-env VITE_API_URL="$API_URL" \
+            --build-env VITE_COMMIT="$GITHUB_SHA"
+
+  smoke-test:
+    name: Smoke test en produccion
+    needs: deploy-web
+    runs-on: ubuntu-latest
+    env:
+      API_URL: ${{ vars.API_URL }}
+      WEB_URL: ${{ vars.WEB_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verificar variables
+        run: scripts/verificar-config.sh API_URL WEB_URL
+      - name: Comprobar lo desplegado
+        run: scripts/smoke.sh "$API_URL" "$WEB_URL" "$GITHUB_SHA"

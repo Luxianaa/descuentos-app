@@ -1,0 +1,20 @@
+{
+  "name": "descuentos-app",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Practica 8 COM450: CI/CD con GitHub Actions, Vercel y Render",
+  "scripts": {
+    "prepare": "husky",
+    "test:web": "npm --prefix web test",
+    "test:api": "mvn -B -f api/pom.xml test",
+    "test": "npm run test:web && npm run test:api"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^21.2.3",
+    "@commitlint/config-conventional": "^21.2.3",
+    "eslint": "^10.12.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.4.0",
+    "prettier": "^3.9.9"
+  }
+}

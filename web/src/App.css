@@ -1,0 +1,72 @@
+:root {
+  font-family: Calibri, 'Segoe UI', system-ui, sans-serif;
+  color: #132030;
+}
+body {
+  margin: 0;
+  background: #f4f6f8;
+}
+main {
+  max-width: 420px;
+  margin: 3rem auto;
+  padding: 1.5rem;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
+}
+h1 {
+  margin: 0;
+  font-size: 1.5rem;
+  color: #1f4e79;
+}
+.sub {
+  margin: 0.25rem 0 1.5rem;
+  color: #5a6673;
+  font-size: 0.9rem;
+}
+form {
+  display: grid;
+  gap: 1rem;
+}
+label {
+  display: grid;
+  gap: 0.25rem;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+input {
+  padding: 0.5rem;
+  border: 1px solid #aeb8c2;
+  border-radius: 4px;
+  font-size: 1rem;
+}
+button {
+  padding: 0.6rem;
+  border: 0;
+  border-radius: 4px;
+  background: #2e5c8a;
+  color: #fff;
+  font-size: 1rem;
+  cursor: pointer;
+}
+button:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+.ok {
+  margin-top: 1.25rem;
+  padding: 0.75rem;
+  background: #e8f5ed;
+  border-left: 4px solid #2e9e5b;
+}
+.error {
+  margin-top: 1.25rem;
+  padding: 0.75rem;
+  background: #fceaea;
+  border-left: 4px solid #d64545;
+}
+footer {
+  margin-top: 1.5rem;
+  font-size: 0.8rem;
+  color: #5a6673;
+}

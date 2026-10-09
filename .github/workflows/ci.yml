@@ -1,0 +1,154 @@
+# Integracion continua: se define UNA vez y la reutilizan pr.yml (pull requests) y cd.yml (main).
+name: CI
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  # 1. Los hooks de Husky se pueden saltar con "git commit --no-verify": el servidor repite la comprobacion.
+  commits:
+    name: Mensajes de commit
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    env:
+      HUSKY: 0
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Validar Conventional Commits del PR
+        run: >
+          npx commitlint --verbose
+          --from ${{ github.event.pull_request.base.sha }}
+          --to ${{ github.event.pull_request.head.sha }}
+
+  # 2. API: compilar, probar, cobertura minima (JaCoCo) y empaquetar, en dos versiones de Java.
+  api:
+    name: API (Java ${{ matrix.java }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        java: [17, 21]
+    defaults:
+      run:
+        working-directory: api
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ matrix.java }}
+          cache: maven
+      - name: Compilar, probar y verificar la cobertura
+        run: mvn -B verify
+      - name: Resumen de pruebas (falla si hay cero)
+        if: always()
+        run: python3 ../scripts/resumen-pruebas.py "API - Java ${{ matrix.java }}" "target/surefire-reports/TEST-*.xml" | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: Guardar informes de pruebas y cobertura
+        if: always() && matrix.java == 17
+        uses: actions/upload-artifact@v4
+        with:
+          name: api-informes
+          path: |
+            api/target/surefire-reports
+            api/target/site/jacoco
+          if-no-files-found: warn
+      - name: Guardar el jar
+        if: matrix.java == 17
+        uses: actions/upload-artifact@v4
+        with:
+          name: api-jar
+          path: api/target/api.jar
+          if-no-files-found: error
+
+  # 3. Front-end: analisis estatico, formato, pruebas con cobertura y build, en dos versiones de Node.
+  web:
+    name: Web (Node ${{ matrix.node }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [22, 24]
+    defaults:
+      run:
+        working-directory: web
+    env:
+      CYPRESS_INSTALL_BINARY: 0 # este job no necesita el navegador de Cypress
+      HUSKY: 0
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+      - name: Analisis estatico (ESLint)
+        run: npm run lint
+      - name: Formato (Prettier)
+        run: npm run format:check
+      - name: Pruebas con cobertura (Vitest)
+        run: npm run test:coverage -- --reporter=default --reporter=junit --outputFile.junit=reports/junit.xml
+      - name: Resumen de pruebas (falla si hay cero)
+        if: always()
+        run: python3 ../scripts/resumen-pruebas.py "Web - Node ${{ matrix.node }}" "reports/junit.xml" | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: Build de produccion
+        run: npm run build
+      - name: Guardar informes
+        if: always() && matrix.node == 22
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-informes
+          path: |
+            web/reports
+            web/coverage
+          if-no-files-found: warn
+
+  # 4. E2E: API y front-end reales dentro del runner, Cypress contra ambos.
+  e2e:
+    name: E2E (Cypress)
+    needs: [api, web]
+    runs-on: ubuntu-latest
+    env:
+      HUSKY: 0
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: actions/download-artifact@v4
+        with:
+          name: api-jar
+          path: api-dist
+      - name: Arrancar la API en segundo plano
+        run: nohup java -jar api-dist/api.jar > api.log 2>&1 &
+      - uses: cypress-io/github-action@v6
+        with:
+          working-directory: web
+          build: npm run build
+          start: npm run preview
+          wait-on: "http://localhost:4173, http://localhost:8080/actuator/health"
+          wait-on-timeout: 120
+        env:
+          VITE_API_URL: http://localhost:8080
+      - name: Guardar videos y capturas de Cypress
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cypress-evidencia
+          path: |
+            web/cypress/videos
+            web/cypress/screenshots
+            api.log
+          if-no-files-found: ignore
