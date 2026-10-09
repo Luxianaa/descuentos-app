@@ -4,7 +4,9 @@
 # Uso:  scripts/smoke.sh API_URL WEB_URL COMMIT_SHA
 # Variable opcional: SMOKE_API_COMMIT=0 omite la comprobacion del commit de la API (en un preview la API es la de produccion).
 set -u
-API="${1%/}"; WEB="${2%/}"; SHA="$3"
+API=$(printf '%s' "${1%/}" | tr -d '\r\n "' | sed 's:/*$::')
+WEB=$(printf '%s' "${2%/}" | tr -d '\r\n "' | sed 's:/*$::')
+SHA=$(printf '%s' "$3" | tr -d '\r\n "')
 VERIFICAR_API_COMMIT="${SMOKE_API_COMMIT:-1}"
 fallos=0
 RESUMEN="${GITHUB_STEP_SUMMARY:-/dev/null}"
