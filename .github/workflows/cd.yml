@@ -68,7 +68,13 @@ jobs:
       - name: Desplegar a produccion
         run: |
           TOKEN=$(printf '%s' "$VERCEL_TOKEN" | tr -d '\r\n "')
+          ORG=$(printf '%s' "$VERCEL_ORG_ID" | tr -d '\r\n "')
+          PRJ=$(printf '%s' "$VERCEL_PROJECT_ID" | tr -d '\r\n "')
           API=$(printf '%s' "$API_URL" | tr -d '\r\n "' | sed 's:/*$::')
+          mkdir -p .vercel
+          printf '{"orgId":"%s","projectId":"%s"}\n' "$ORG" "$PRJ" > .vercel/project.json
+          export VERCEL_ORG_ID="$ORG"
+          export VERCEL_PROJECT_ID="$PRJ"
           npx --yes vercel@latest deploy --prod --token "$TOKEN" \
             --build-env VITE_API_URL="$API" \
             --build-env VITE_COMMIT="$GITHUB_SHA"
