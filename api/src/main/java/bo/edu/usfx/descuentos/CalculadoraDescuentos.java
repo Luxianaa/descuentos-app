@@ -16,7 +16,7 @@ public class CalculadoraDescuentos {
         if (precioOriginal <= 0) {
             throw new IllegalArgumentException("El precio original debe ser mayor que cero");
         }
-        if (porcentajeDescuento < 0 || porcentajeDescuento >= 100) {
+        if (porcentajeDescuento < 0 || porcentajeDescuento > 100) {
             throw new IllegalArgumentException("El porcentaje de descuento debe estar entre 0 y 100");
         }
         BigDecimal precio = BigDecimal.valueOf(precioOriginal);
