@@ -49,9 +49,10 @@ jobs:
           printf '{"orgId":"%s","projectId":"%s"}\n' "$ORG" "$PRJ" > .vercel/project.json
           export VERCEL_ORG_ID="$ORG"
           export VERCEL_PROJECT_ID="$PRJ"
-          url=$(npx --yes vercel@latest deploy --token "$TOKEN" \
+          raw=$(npx --yes vercel@latest deploy --token "$TOKEN" \
             --build-env VITE_API_URL="$API" \
             --build-env VITE_COMMIT="$HEAD_SHA")
+          url=$(echo "$raw" | grep -Eo 'https://[^ ]+' | tail -n 1)
           echo "Preview: $url"
           echo "url=$url" >> "$GITHUB_OUTPUT"
       - name: Smoke test del preview
