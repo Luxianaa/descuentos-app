@@ -67,6 +67,14 @@ class SeguridadApiTest {
     }
 
     @Test
+    void rechazaUnPrecioEnormeYUnNumeroNoFinito() throws Exception {
+        mvc.perform(post("/api/descuento").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"precio\":1e300,\"porcentaje\":10}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error", is("El precio original no puede superar 1000000000")));
+    }
+
+    @Test
     void elActuatorSoloExponeHealthSinDetalles() throws Exception {
         mvc.perform(get("/actuator/health"))
                 .andExpect(status().isOk())
