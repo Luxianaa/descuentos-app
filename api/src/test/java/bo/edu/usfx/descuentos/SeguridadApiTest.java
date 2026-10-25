@@ -18,9 +18,11 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
 /** Practica 10: los controles de seguridad de la API se prueban como cualquier otra regla de negocio. */
-@SpringBootTest
+@SpringBootTest(properties = "app.admin-token=token-de-prueba-0123456789")
 @AutoConfigureMockMvc
 class SeguridadApiTest {
+
+    private static final String TOKEN = "token-de-prueba-0123456789";
 
     @Autowired
     private MockMvc mvc;
@@ -72,6 +74,28 @@ class SeguridadApiTest {
                         .content("{\"precio\":1e300,\"porcentaje\":10}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error", is("El precio original no puede superar 1000000000")));
+    }
+
+    @Test
+    void adminSinTokenDa401() throws Exception {
+        mvc.perform(get("/api/admin/estadisticas"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.error", is("No autorizado")));
+    }
+
+    @Test
+    void adminConTokenIncorrectoDa401() throws Exception {
+        mvc.perform(get("/api/admin/estadisticas").header("X-Admin-Token", "otro-token-0123456789"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void adminConTokenCorrectoCuentaLosCalculos() throws Exception {
+        mvc.perform(post("/api/descuento").contentType(MediaType.APPLICATION_JSON)
+                .content("{\"precio\":100,\"porcentaje\":10}"));
+        mvc.perform(get("/api/admin/estadisticas").header("X-Admin-Token", TOKEN))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.calculos").isNumber());
     }
 
     @Test
