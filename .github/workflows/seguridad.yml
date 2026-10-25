@@ -1,0 +1,110 @@
+# Controles de seguridad: se define UNA vez y lo reutilizan pr.yml y cd.yml junto al CI.
+# Cuatro controles, cuatro preguntas:  secretos (¿se filtro algo?), dependencias (¿hay componentes vulnerables?),
+# DAST (¿la aplicacion en ejecucion se deja atacar?) y reglas propias (auditoria-seguridad.sh).
+name: Seguridad
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  # 1. Secretos: gitleaks revisa el historial completo; buscar-secretos.sh es el filtro rapido sobre los archivos actuales.
+  secretos:
+    name: Secretos
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Filtro rapido de secretos en los archivos
+        run: scripts/buscar-secretos.sh
+      - name: gitleaks (historial completo)
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # 2. Dependencias (SCA): Trivy sobre pom.xml y package-lock.json; npm audit sobre lo que llega a produccion.
+  dependencias:
+    name: Dependencias
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Informe (CRITICAL y HIGH, informativo)
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          skip-dirs: web/node_modules
+          format: table
+          exit-code: "0"
+      - name: Puerta - ninguna vulnerabilidad CRITICAL con parche disponible
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          severity: CRITICAL
+          ignore-unfixed: true
+          skip-dirs: web/node_modules
+          format: table
+          exit-code: "1"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: npm audit (dependencias de produccion del front-end)
+        run: npm --prefix web audit --omit=dev --audit-level=high
+
+  # 3. DAST: API real en el runner; primero las reglas propias, despues ZAP con el contrato OpenAPI.
+  dast:
+    name: DAST (API en ejecucion)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+          cache: maven
+      - name: Empaquetar la API
+        run: mvn -B -f api/pom.xml -DskipTests package
+      - name: Arrancar la API con un token de administracion efimero
+        run: |
+          ADMIN_TOKEN="$(openssl rand -hex 24)"
+          export ADMIN_TOKEN
+          echo "::add-mask::$ADMIN_TOKEN"
+          CORS_ORIGINS="http://localhost:4173" nohup java -jar api/target/api.jar > api.log 2>&1 &
+          for _ in $(seq 1 60); do
+            curl -fsS http://localhost:8080/actuator/health > /dev/null 2>&1 && exit 0
+            sleep 2
+          done
+          cat api.log
+          exit 1
+      - name: Reglas propias (auditoria-seguridad.sh)
+        run: scripts/auditoria-seguridad.sh http://localhost:8080
+      - name: ZAP - escaneo de la API con el contrato OpenAPI
+        run: |
+          chmod -R a+rwx seguridad
+          set +e
+          docker run --rm --network host -v "$PWD/seguridad:/zap/wrk:rw" \
+            ghcr.io/zaproxy/zaproxy:stable zap-api-scan.py \
+            -t openapi.yaml -f openapi \
+            -c zap-reglas.tsv -r zap-informe.html -J zap-informe.json
+          codigo=$?
+          echo "ZAP termino con codigo $codigo (0 = limpio, 1 = FAIL, 2 = solo avisos, 3 = error de ejecucion)"
+          # 0 y 2 pasan: los avisos se triagean en el informe. 1 y 3 fallan el pipeline.
+          if [ "$codigo" -eq 1 ] || [ "$codigo" -ge 3 ]; then exit 1; fi
+      - name: Guardar el informe de ZAP y el registro de la API
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: zap-informe
+          path: |
+            seguridad/zap-informe.html
+            seguridad/zap-informe.json
+            api.log
+          if-no-files-found: warn

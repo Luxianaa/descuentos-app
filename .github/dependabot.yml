@@ -1,0 +1,12 @@
+# Actualizaciones automaticas de dependencias: Dependabot abre un pull request por cada version con parche de seguridad.
+version: 2
+updates:
+  - package-ecosystem: maven
+    directory: /api
+    schedule: { interval: weekly }
+  - package-ecosystem: npm
+    directory: /web
+    schedule: { interval: weekly }
+  - package-ecosystem: github-actions
+    directory: /
+    schedule: { interval: weekly }

@@ -11,14 +11,18 @@ concurrency:
 
 permissions:
   contents: read
+  pull-requests: read
 
 jobs:
   ci:
     uses: ./.github/workflows/ci.yml
 
+  seguridad:
+    uses: ./.github/workflows/seguridad.yml
+
   preview:
     name: Preview en Vercel
-    needs: ci
+    needs: [ci, seguridad]
     runs-on: ubuntu-latest
     environment: preview
     permissions:
