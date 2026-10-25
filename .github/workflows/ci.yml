@@ -56,7 +56,7 @@ jobs:
         run: python3 ../scripts/resumen-pruebas.py "API - Java ${{ matrix.java }}" "target/surefire-reports/TEST-*.xml" | tee -a "$GITHUB_STEP_SUMMARY"
       - name: Guardar informes de pruebas y cobertura
         if: always() && matrix.java == 17
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: api-informes
           path: |
@@ -65,7 +65,7 @@ jobs:
           if-no-files-found: warn
       - name: Guardar el jar
         if: matrix.java == 17
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: api-jar
           path: api/target/api.jar
@@ -106,7 +106,7 @@ jobs:
         run: npm run build
       - name: Guardar informes
         if: always() && matrix.node == 22
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: web-informes
           path: |
@@ -144,7 +144,7 @@ jobs:
           VITE_API_URL: http://localhost:8080
       - name: Guardar videos y capturas de Cypress
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: cypress-evidencia
           path: |

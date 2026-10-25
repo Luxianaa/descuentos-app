@@ -100,7 +100,7 @@ jobs:
           if [ "$codigo" -eq 1 ] || [ "$codigo" -ge 3 ]; then exit 1; fi
       - name: Guardar el informe de ZAP y el registro de la API
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: zap-informe
           path: |
