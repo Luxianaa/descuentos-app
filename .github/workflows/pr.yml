@@ -36,7 +36,7 @@ jobs:
       GH_TOKEN: ${{ github.token }}
       HEAD_SHA: ${{ github.event.pull_request.head.sha }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Verificar secretos y variables
         run: scripts/verificar-config.sh VERCEL_TOKEN VERCEL_ORG_ID VERCEL_PROJECT_ID API_URL
       - uses: actions/setup-node@v4

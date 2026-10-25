@@ -17,7 +17,7 @@ jobs:
     name: Secretos
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - name: Filtro rapido de secretos en los archivos
@@ -32,7 +32,7 @@ jobs:
     name: Dependencias
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Informe (CRITICAL y HIGH, informativo)
         uses: aquasecurity/trivy-action@v0.36.0
         with:
@@ -64,7 +64,7 @@ jobs:
     name: DAST (API en ejecucion)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
