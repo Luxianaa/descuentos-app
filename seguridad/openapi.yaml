@@ -1,0 +1,69 @@
+openapi: 3.0.3
+info:
+  title: descuentos-api
+  version: 1.0.0
+  description: Contrato de la API que ZAP usa para saber que rutas atacar (Practica 10).
+servers:
+  - url: http://localhost:8080
+paths:
+  /api/info:
+    get:
+      summary: Version y commit en ejecucion
+      responses:
+        "200":
+          description: Informacion de la aplicacion
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  app: { type: string }
+                  version: { type: string }
+                  commit: { type: string }
+  /api/descuento:
+    post:
+      summary: Calcula el precio final con descuento
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [precio, porcentaje]
+              properties:
+                precio: { type: number, example: 200 }
+                porcentaje: { type: number, example: 25 }
+      responses:
+        "200":
+          description: Precio final
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  precioOriginal: { type: number }
+                  porcentaje: { type: number }
+                  precioFinal: { type: number }
+        "400":
+          description: Datos invalidos
+  /api/admin/estadisticas:
+    get:
+      summary: Cantidad de calculos atendidos (solo administracion)
+      parameters:
+        - in: header
+          name: X-Admin-Token
+          required: false
+          schema: { type: string }
+      responses:
+        "200":
+          description: Estadisticas
+        "401":
+          description: Sin token o token incorrecto
+        "403":
+          description: Administracion deshabilitada
+  /actuator/health:
+    get:
+      summary: Estado del servicio
+      responses:
+        "200":
+          description: UP

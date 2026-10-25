@@ -1,0 +1,7 @@
+# gitleaks usa sus reglas por defecto; solo se permiten los valores de prueba de las pruebas unitarias.
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Valores falsos usados por las pruebas de la API"
+paths = ['''api/src/test/.*''']

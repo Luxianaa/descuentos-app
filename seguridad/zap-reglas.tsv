@@ -1,0 +1,12 @@
+# Reglas de ZAP para el escaneo de la API (zap-api-scan.py -c). Formato: id <TAB> ACCION <TAB> (nombre)
+# Acciones: FAIL = el pipeline falla; WARN = se informa; IGNORE = se omite (solo con justificacion escrita abajo).
+# Los identificadores de regla se confirman en el informe HTML de ZAP (columna "Plugin Id" / "Alert").
+10020	FAIL	(Anti-clickjacking Header)
+10021	FAIL	(X-Content-Type-Options Header Missing)
+10036	FAIL	(Server Leaks Version Information via Server Header)
+10037	FAIL	(Server Leaks Information via X-Powered-By)
+10038	FAIL	(Content Security Policy Header Not Set)
+10098	FAIL	(Cross-Domain Misconfiguration)
+90022	FAIL	(Application Error Disclosure)
+40012	FAIL	(Cross Site Scripting Reflected)
+40018	FAIL	(SQL Injection)
