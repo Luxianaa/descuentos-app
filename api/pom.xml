@@ -20,7 +20,7 @@
     <properties>
         <java.version>17</java.version>
         <maven.compiler.release>17</maven.compiler.release>
-        <jacoco.version>0.8.12</jacoco.version>
+        <jacoco.version>0.8.16</jacoco.version>
         <!-- Cobertura minima de lineas: si baja de este valor, "mvn verify" falla -->
         <cobertura.minima>0.80</cobertura.minima>
     </properties>
